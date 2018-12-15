@@ -1,2 +1,2 @@
-# image_recognition
+# Image recognition
 Recognition of small objects in white background

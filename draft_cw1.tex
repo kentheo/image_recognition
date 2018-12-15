@@ -1,0 +1,552 @@
+\documentclass[11pt]{article}
+\usepackage[paper=a4paper,top=2in]{geometry}
+\usepackage{titling}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{color}
+\graphicspath{ {report/} }
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+ 
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+\begin{document}
+
+\begin{titlepage}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}} % Defines a new command for the horizontal lines, change thickness here
+
+\center % Center everything on the page
+ 
+%----------------------------------------------------------------------------------------
+%	HEADING SECTIONS
+%----------------------------------------------------------------------------------------
+
+\textsc{\LARGE University of Edinburgh}\\[1.5cm] % Name of your university/college
+\textsc{\Large Introduction to Vision and Robotics}\\[0.5cm] % Major heading such as course name
+\textsc{\large }\\[0.5cm] % Minor heading such as course title
+
+%----------------------------------------------------------------------------------------
+%	TITLE SECTION
+%----------------------------------------------------------------------------------------
+
+\HRule \\[0.4cm]
+{ \huge \bfseries Assessed Practical 1: Coin Counter}\\[0.4cm] % Title of your document
+\HRule \\[1.5cm]
+ 
+%----------------------------------------------------------------------------------------
+%	AUTHOR SECTION
+%----------------------------------------------------------------------------------------
+
+\begin{minipage}{0.5\textwidth}
+\begin{flushleft} \large
+\emph{Authors:}\\
+s1317642 Kendeas \textsc{Theofanous}
+s1452672 Demetra \textsc{Charalambous}
+\end{flushleft}
+\end{minipage}\\[3cm]
+
+{\large \today}\\[3cm]
+
+\end{titlepage}
+
+\newgeometry{top=1in,bottom=1in,right=1.5in,left=1.5in}
+\newpage
+
+\title{Introduction} \setlength{\droptitle}{-70pt}
+\date{\vspace{-10ex}}
+\maketitle
+
+\paragraph{}
+The goal of this practical was to develop a Matlab program that takes an image as an input and detects coins and various other objects represented on the image. The program acts like a coin counter. There is a fixed set of 10 object classes that the program should recognise. Each object class has a specific value as listed below:
+ 
+\begin{itemize}
+\item one and two pound pieces 
+\item 50, 20 and 5 pence pieces
+\item washer with a small hole (75p)
+\item washer with a large hole (25p)
+\item angle bracket (2p)
+\item AAA battery (no value)
+\item and nut (no value)
+\end{itemize}
+
+\paragraph{}
+For the purpose of this assignement, we were given 14 test images. All the images were captured orthographically viewing a scene with the different objects and a static background. Our algorithm detects the objects in the image, segments the objects from the background and classifies the different objects into their distinct classes.
+
+Our main approach was to first create a background using the images provided. To distinguish the objects from the background, we removed the constructed background from each image and converted the image to binary. The white colour represented the different objects and the black colour represented the background. As each image had more than one object, we had to isolate each object of the image. By doing that we were able to create the training set for our program. For the classification process, we followed the same procedure for each test image as described above to get all the objects of the test image. To classify the different objects we calculated the properties of each object in the training set as well as the properties of each object of the test image. By comparing these values, a class is assigned to every object. Depending on the predicted class, the total value of each test image is then calculated.
+\newpage
+
+\title{Methods}\setlength{\droptitle}{-70pt}
+\date{\vspace{-10ex}}
+\maketitle
+\paragraph{}
+In this section, all the methods that were used to run the program are described here. We have also included trial methods that were eventually not used due to unsatisfactory results. The methods are listed below:
+\paragraph{}
+\textbf{main} is the main operation of our training and classifying. It contains all the function calls of our algorithm.
+\paragraph{}
+\textbf{read\_images} is a simple function we implemented to read the different images used in our program. Apart from the directory and the file pattern used to find and read the images, the function has also a parameter \textbf{isbinary} which denotes whether the images in the given directory are binary. If they are, a 3-dimensional array is returned containing the read images. This is used to read the binary object images of the training set.  Otherwise, a 4-dimensional array is returned containing the RGB images desired.
+
+\paragraph{}
+The \textbf{construct\_bg} function constructs the background from a set of images given as parameter. All images contain foreground objects and since the camera and illumination are largely stationary, we synthesise a background image by median filtering the values of all pixels in each of the images. We assume that foreground objects will be observed in a few of the images at a given pixel but that most observation will be of the background. 
+
+\paragraph{}
+The binary images are created using the function \textbf{subtract\_bg}. In the lab assignments, each image contains only one object and therefore a threshold value was easy to find by plotting the histogram of the binary image, smoothing it and then automatically generating the threshold. We had a different approach. Subtracting the background from a set of images gives the difference images. The fact that our images contain multiple objects lead us to decide a threshold value after tests and observations. Therefore, the difference images are set to be equal to its values greater than the selected threshold. 
+The channel images are or’ed together to get the binary images. Small regions are detected due to image noise.
+\paragraph{}
+We tried further processing of the images to reduce that, using commands like \textbf{strel('disk', 1)} and \textbf{imclose(binary\_image, s)} to close gaps and get clear blobs and \textbf{bwmorph 'erode'} and \textbf{'dilate'} to remove the image noise. The clarity of the objects in the images after the processing was poor, so we discarded these changes on the binary images. The results of these trials are shown in the 'Results' section. 
+\paragraph{}
+To train the classifier, the function \textbf{get\_objects} identifies all the separate objects of a binary training image by getting the largest object of the image, using \textbf{getlargest} and subtracting it from the image successively. The training set was created manually by taking six images out of nine of the simple set. We decided to use four training images for each of the ten object classes. The \textbf{getproperties }function, provided to us, is used to create an array of vectors holding the properties of the objects. When using get properties vec = [compactness, ci1, ci2] as provided in the function, the evals are exceptionally small, close to zero, thus the system cannot assign classes. When using get properties vec = [4*sqrt(area), perim, H*compactness], all objects are misclassified. After trial and error we chose to use vec= [complexmoment / 1000, radii, filledArea] as it was more accurate.
+\paragraph{}
+We use probabilistic object recognition using the multivariate Gaussian Distribution model.
+Then, the \textbf{buildmodel} function is used to give us the Means of every class, the Invcors i.e. the Inverse covariance matrices for the feature properties and the Apriori of the classes. The Dimension parameter is set to 3 because the Vectors parameter is 3-dimensional. We provide 40 training objects and the Classes parameter is an array containing the true classes of each of the objects. This completes the training of the classifier. 
+\paragraph{}
+Testing the classifier begins by identifying the individual objects given a test image with multiple objects in it using the function \textbf{get\_objects}. Their properties are then found using the \textbf{getproperties} function. Classification is done using the function \textbf{classify}, given the above parameters. 
+\paragraph{}
+The \textbf{multivariate} function inside the classify function, calculates the probability of the object belonging to each class. The classifier then evaluates the probabilities and classifies the objects according to the highest probability calculated.
+\paragraph{}
+To calculate the total value of each image, we use the function \textbf{calc\_value} and according to the predicted classes of every object we obtain the total value of the image.
+
+\newpage
+
+\title{Results}\setlength{\droptitle}{-70pt}
+\date{\vspace{-10ex}}
+\maketitle
+
+\paragraph{}
+In our first attempt to construct the background we used only the nine simple images provided. As you can see in Figure 1a, the "one pound" object was at the same position in most of the images and that made it impossible to synthesise the background without it. Therefore, it was ideal to use all 14 images provided to us because the more frames we have for each pixel the more accurate the result will be after median filtering.   
+
+% Background
+\begin{figure}[H]
+	\centering
+	\begin{minipage}{0.5\textwidth}
+		\centering
+		\includegraphics[width=5cm, height=4cm]{error-background.jpg}\\
+		\subcaption{Figure 1a}
+	\end{minipage}%
+	\begin{minipage}{0.5\textwidth}
+		\centering
+		\includegraphics[width=5cm, height=4cm]{background.jpg}\\
+		\subcaption{Figure 1b}
+	\end{minipage}%
+	\centering
+	\caption{Background Construction}
+\end{figure}
+
+\paragraph{}
+As suggested by the coursework description we tried to normalise our RGB image by splitting it into its red, green and blue channels and each RGB value of each pixel was divided by the sum of its individual RGB values. An example image is shown in Figure 2c and we decided not to use it because of its bad quality.
+
+\begin{figure}[H]
+	\begin{minipage}{0.32\textwidth}
+		\centering
+		\includegraphics[width=4.7cm, height=4cm]{normBG.jpg}\\
+		\subcaption{Normalised Background}
+	\end{minipage}%
+	\begin{minipage}{0.32\textwidth}
+		\centering
+		\includegraphics[width=4.7cm, height=4cm]{normTRimg.jpg}\\
+		\subcaption{Normalised Image}
+	\end{minipage}%
+	\begin{minipage}{0.33\textwidth}
+		\centering
+		\includegraphics[width=4.7cm, height=4cm]{normBinarythress0_04.jpg}\\
+		\subcaption{Normalised Binary image}
+	\end{minipage}%
+	\centering
+	\caption{Normalisation of RGB images}
+\end{figure}
+
+\paragraph{}
+Subtraction of the background of the actual image in Figure 3a results to the binary image in Figure 3b, which we used in our training set. The threshold value we used was 0.06.
+
+\begin{figure}[H]
+	\centering
+	\begin{minipage}{0.5\textwidth}
+		\centering
+		\includegraphics[width=5cm, height=4cm]{p8.jpg}\\
+		\subcaption{Actual Image}
+	\end{minipage}%
+	\begin{minipage}{0.5\textwidth}
+		\centering
+		\includegraphics[width=5cm, height=4cm]{binary_image5.jpg}\\
+		\subcaption{Binary Image}
+	\end{minipage}%
+	\centering
+	\caption{Background Subtraction and Conversion to Binary}
+\end{figure}
+
+\paragraph{}
+As described in the Methods section, we tried to reduce image noise from the images using the bwmorph function, though the result was disappointing. In the following figure you can see the methods we used with their result. 
+
+\begin{figure}[H]
+	\centering
+	\begin{minipage}{0.5\textwidth}
+		\centering
+		\includegraphics[width=5cm, height=4cm]{erode1.jpg}\\
+		\subcaption{'erode' 1}
+	\end{minipage}%
+	\begin{minipage}{0.5\textwidth}
+		\centering
+		\includegraphics[width=5cm, height=4cm]{erodedilate1.jpg}\\
+		\subcaption{'erode' and 'dilate' 1}
+	\end{minipage}%
+	\centering
+	\caption{Noise Reduction}
+\end{figure}
+
+\paragraph{}
+In Figure 5a you can see one of the battery objects we used as training and in Figure 5b a washer with a large hole.
+
+\begin{figure}[H]
+	\centering
+	\begin{minipage}{0.5\textwidth}
+		\centering
+		\includegraphics[width=5cm, height=4cm]{obj001.jpg}\\
+		\subcaption{Battery}
+	\end{minipage}%
+	\begin{minipage}{0.5\textwidth}
+		\centering
+		\includegraphics[width=5cm, height=4cm]{obj034.jpg}\\
+		\subcaption{Washer with large hole}
+	\end{minipage}%
+	\centering
+	\caption{Objects of Training Set}
+\end{figure}
+\newpage
+\paragraph{}
+After getting the properties of the forty objects in the training set, we built a model and here are the Means and Inverse Covariance matrices. The A prioris are uniform 0.100 for all the classes. These matrices are used in the classification process.
+
+		\[
+Means =
+1.0e+03 *
+  \begin{bmatrix}
+    0.0424 &   4.5847 &   4.2077\\
+    0.0376  &  2.3779  &  3.1953\\
+    0.0309  &  1.3268   & 2.9752\\
+    0.0245  &  0.4667   & 1.8188\\
+    0.0294  &  1.1443    &2.7205\\
+    0.0228  &  0.3784 &   1.5800\\
+    0.0200  &  0.2483  &  1.2612\\
+    0.0272  &  0.8313   & 2.3000\\
+    0.0287   & 0.7804  &  2.2508\\
+    0.0243  &  0.5342  &  1.8317\\
+  \end{bmatrix}
+\]
+
+
+		\[
+Invcors(:,:,1) = 
+1.0e+05 *
+	\begin{bmatrix}
+	0.0056 &  -0.0000  &  0.0000\\
+    0.0001  & -0.0000  &  0.0000\\
+    0.0174 &  -0.0000  & -0.0001\\
+    0.0233  &  0.0002  & -0.0002\\
+    0.0277  & -0.0002  &  0.0000\\
+    0.0002  &  0.0000  & -0.0000\\
+    1.0246  &  0.0086  & -0.0117\\
+    0.0443  & -0.0000  & -0.0002\\
+    0.0023  &  0.0000  & -0.0000\\
+    0.0188  & -0.0004 &   0.0001\\	
+	\end{bmatrix}
+\]
+
+
+\[
+Invcors(:,:,2) = 
+	\begin{bmatrix}
+   -1.6272 &   0.0048  & -0.0018\\
+   -0.0242  &  0.0001  & -0.0001\\
+   -0.8448  &  0.0008  &  0.0032\\
+   18.5837  &  0.1493  & -0.1607\\
+  -19.6366  &  0.1784  & -0.0348\\
+    0.5022  &  0.1658 &  -0.0970\\
+  857.8832  &  8.0175 & -10.1043\\
+   -1.9400  &  0.0065 &   0.0063\\
+    2.6706  &  0.0617 &  -0.0561\\
+  -41.6379  &  2.2274 &  -0.9820\\
+	\end{bmatrix}	
+\]
+	
+\[
+Invcors(:,:,3) =
+   1.0e+03 *
+	\begin{bmatrix}
+	0.0006&   -0.0000  &  0.0000\\
+    0.0000 &  -0.0000  &  0.0000\\
+   -0.0073  &  0.0000 &   0.0000\\
+   -0.0203  & -0.0002 &   0.0002\\
+    0.0003  & -0.0000 &   0.0000\\
+   -0.0004  & -0.0001 &   0.0001\\
+   -1.1663  & -0.0101 &   0.0134\\
+   -0.0234  &  0.0000 &  0.0001\\
+   -0.0030  & -0.0001 &   0.0001\\
+    0.0110  & -0.0010 &    0.0005\\		
+	\end{bmatrix}	   
+\]
+\newpage
+\paragraph{}
+When testing our classifier, we used the images shown in Figure 6.
+
+\begin{figure}[H]
+	\begin{minipage}{0.32\textwidth}
+		\centering
+		\includegraphics[width=4cm, height=4cm]{tst6.jpg}\\
+		\subcaption{Test Image 1}
+	\end{minipage}%
+	\begin{minipage}{0.32\textwidth}
+		\centering
+		\includegraphics[width=4cm, height=4cm]{tst4.jpg}\\
+		\subcaption{Test Image 2}
+	\end{minipage}%
+	\begin{minipage}{0.32\textwidth}
+		\centering
+		\includegraphics[width=4cm, height=4cm]{tst1.jpg}\\
+		\subcaption{Test Image 3}
+	\end{minipage}%
+	\centering
+	\caption{Classification}
+\end{figure} 
+
+\paragraph{}
+After extracting the objects of the test binary image, we calculated the properties of each object and compared them with the properties vector of the training set. The classes are numbered from 1 to 10 for "Battery", "Angle Bracket", "One-Pound", "Two-Pound", "50p", "20p", "5p", "small-hole" washer, "large-hole" washer and "nut" respectively. Using classification on the above the results obtained  are the following:
+\paragraph{}
+Test Image 1 Results:
+\[
+Real Classes = 
+	\setcounter{MaxMatrixCols}{12}
+	\begin{bmatrix}
+	1 & 1 & 2 & 2 & 3 & 8 & 8 & 10 & 9 & \textbf{4} & 6 & 6\\
+	\end{bmatrix}
+\]
+\[
+Predicted Classes = 
+	\setcounter{MaxMatrixCols}{12}
+	\begin{bmatrix}
+	 1 & 1 & 2 & 2 & 3 & 8 & 8 & 10 & 9 & \textbf{6} & 6 & 6\\
+	\end{bmatrix}
+\]
+\paragraph{}
+Calculated Value = 4.39 GBP
+\paragraph{}
+\paragraph{}
+Test Image 2 Results:
+\[
+Real Classes = 
+	\setcounter{MaxMatrixCols}{13}
+	\begin{bmatrix}
+	2 & 5 & 8 & 2 & \textbf{10} & 6 & 9 & 6 & 10 & 3 & \textbf{4} & 6 & \textbf{4}\\
+	\end{bmatrix}
+\]
+\[
+Predicted Classes = 
+	\setcounter{MaxMatrixCols}{13}
+	\begin{bmatrix}
+	 2   &  5 &    8 &    2   &  \textbf{8} &    6  &   9  &   6  &  10 & 3  & \textbf{6} &    6  & \textbf{0*}\\
+	\end{bmatrix}
+\]
+\paragraph{}
+Calculated Value = 5.09 GBP
+\paragraph{}
+\paragraph{}
+Test Image 3 Results:
+\[
+Real Classes = 
+	\setcounter{MaxMatrixCols}{12}
+	\begin{bmatrix}
+	1 & 1 & 2 & 8 & \textbf{10} & 9 & \textbf{10} & 9 & 9 & 7 & 6 & \textbf{4}\\
+	\end{bmatrix}
+\]
+\[
+Predicted Classes = 
+	\setcounter{MaxMatrixCols}{12}
+	\begin{bmatrix}
+	 1 & 1 & 2 & 8 & \textbf{6} & 9 & \textbf{4} & 9 & 9 & 7 & 6 & \textbf{3}\\
+	\end{bmatrix}
+\]
+\paragraph{}
+Calculated Value = 4.97 GBP
+\paragraph{}
+\paragraph{}
+*Where zero (0) is the class assigned to objects that have very small probabilities for every class. The program prints an "Error message" and explains to the user what class zero stands for.
+\newpage
+\title{Discussion}\setlength{\droptitle}{-70pt}
+\date{\vspace{-10ex}}
+\maketitle
+
+\paragraph{}
+As you can observe, we overall faced a problem on recognising the objects in Class 10("nut" object) and in Class 4 ("one-pound" object). Class 10 is usually misclassified with Class 8 ("small hole" washer), Class 6 ("20p") and Class 4 ("one pound").
+\paragraph{}
+It was expected to have a problem on distinguishing nut objects from 20p objects due to their similar shape and size when converting to binary. Their property vectors (obtained from the training set using four objects of each class) are listed below and we can see that their values are similar:
+\paragraph{}
+\[
+20p = 
+	\setcounter{MaxMatrixCols}{3}
+	\begin{bmatrix}
+	0.0231 & 0.4289 & 1.6630\\
+	0.0230 & 0.4208 & 1.6590\\
+	0.0228 & 0.3303 & 1.4980\\
+	0.0222 & 0.3336 & 1.5000\\
+	\end{bmatrix}
+\]
+\paragraph{}
+\[
+Nut = 
+	\setcounter{MaxMatrixCols}{3}
+	\begin{bmatrix}
+	0.0247 & 0.5669 & 1.8890\\
+	0.0252 & 0.6150 & 1.9760\\
+	0.0242 & 0.5291 & 1.8210\\
+	0.0230 & 0.4256 & 1.6410\\
+	\end{bmatrix}
+\]
+\paragraph{}
+However, we were surpriced to see the nut classified as a small hole washer, as their property values were not that similar.
+\paragraph{}
+Nut properties(taken from Image 2):
+\[
+Nut = 
+	\setcounter{MaxMatrixCols}{3}
+	\begin{bmatrix}
+	0.0250 & 0.5873 & 1.9120\\
+	\end{bmatrix}
+\]
+\paragraph{}
+Washer with a small hole properties(taken from training set):
+\[
+washer small hole = 
+	\setcounter{MaxMatrixCols}{3}
+	\begin{bmatrix}
+	0.0274 & 0.8493 & 2.3210\\
+	0.0261 & 0.7008 & 2.1010\\
+	0.0283 & 0.9775 & 2.4980\\
+	0.0271 & 0.7976 & 2.2800\\
+	\end{bmatrix}
+\]
+\paragraph{}
+We have also encountered a huge problem with classifying the one pound (Class 4). One pound object is never classified correctly. We observed that in the images given, one pound objects are usually in the shadow and rarely change place. These problems made it difficult for us to create the one pound training set because of the bad quality of all the one pound objects.
+\paragraph{}
+One pound properties(taken from training set):
+\[
+one pound = 
+	\setcounter{MaxMatrixCols}{3}
+	\begin{bmatrix}
+	0.0245 & 0.4838 & 1.8450\\
+	0.0238 & 0.4819 & 1.7580\\
+	0.0255 & 0.4043 & 1.8860\\
+	0.0240 & 0.4970 & 1.7860\\
+	\end{bmatrix}
+\]
+\paragraph{}
+The one pound objects (1 and 2) were classified as Class 6 (20p). Considering the property values of Class 6 in the previous page, we observe that their values (especially for the one pound 2 object) are similar. For this situation, the reason that we think this happens is that their area is almost the same. If we simply take one pound coin and place a 20p coin above it, it almost covers its area. As we are using the "filledArea" property, it was expected to missclassify objects with similar areas.
+\paragraph{}
+One pound properties(taken from Image 1):
+\[
+one pound 1 = 
+	\setcounter{MaxMatrixCols}{3}
+	\begin{bmatrix}
+	0.0233 & 0.3430 & 1.5610\\
+	\end{bmatrix}
+\]
+\paragraph{}
+One pound properties(taken from Image 2):
+\[
+one pound 2 = 
+	\setcounter{MaxMatrixCols}{3}
+	\begin{bmatrix}
+	0.0240 & 0.5036 & 1.8070\\
+	\end{bmatrix}
+\]
+\paragraph{}
+The one pound object 3 was classified as Class 3 (two pounds). This might happenned due to their shape similarity and due to bad quality of the one pound objects.
+\paragraph{}
+One pound properties(taken from Image 3):
+\[
+one pound 3 = 
+	\setcounter{MaxMatrixCols}{3}
+	\begin{bmatrix}
+	0.0218 & 0.1858 & 1.0700\\
+	\end{bmatrix}
+\]
+
+\paragraph{}
+The one pound object below is classified as Class 0. As it is clear, its properties are quite smaller than the normal pound values. This is because the object in the binary image had also black pixels inside (apart from the normal white pixels) and using the getlargest method, only the white pixels were used to represent the object. This made the one pound object a lot smaller than it actually is and deformed it.
+\paragraph{}
+One pound properties(taken from Image 2):
+\[
+one pound = 
+	\setcounter{MaxMatrixCols}{3}
+	\begin{bmatrix}
+	0.0222 & 0.3367 & 1.5160\\
+	\end{bmatrix}
+\]
+
+Overall, apart from the one pound objects and nut objects that are missclassified, the program works well for all the other objects. The positive fact is that it does not take too much time to run and it is very efficient. We have also tried creating the training set with self-collected data (taking pictures of each object individually), but when testing it we realised -because of the different lighting conditions and camera positions- the program would perform poorly. Thus, we have decided to use the objects of the images provided even though it sometimes leads to unsuccessful classifications.
+
+\paragraph{}
+\textbf{Work Distribution} 
+\newline
+We used pair programming for the purpose of this assignment. The report load was equally divided as well. We both agree the final mark should be distributed 50:50.
+
+\newpage
+\title{Appendix}\setlength{\droptitle}{-70pt}
+\date{\vspace{-10ex}}
+\maketitle
+
+\paragraph{}
+main
+\lstinputlisting[language=Matlab]{main2.m}
+\paragraph{}
+read\_images
+\lstinputlisting[language=Matlab]{readimages.m}
+\paragraph{}
+construct\_bg
+\lstinputlisting[language=Matlab]{constructbg.m}
+\paragraph{}
+subtract\_bg
+\lstinputlisting[language=Matlab]{subtractbg.m}
+\paragraph{}
+get\_objects
+\lstinputlisting[language=Matlab]{getobjects.m}
+\paragraph{}
+getproperties
+\lstinputlisting[language=Matlab]{getproperties.m}
+\paragraph{}
+classify
+\lstinputlisting[language=Matlab]{classify.m}
+\paragraph{}
+calc\_value
+\lstinputlisting[language=Matlab]{calcvalue.m}
+
+
+
+
+\end{document}
+
+
+
